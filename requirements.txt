@@ -1,0 +1,26 @@
+# XScanner v3 — Requirements
+# Install: pip install -r requirements.txt
+#
+# Core (wajib):
+aiohttp>=3.9.0
+beautifulsoup4>=4.12.0
+click>=8.1.0
+lxml>=4.9.0
+rich>=13.0.0
+
+# Security scanning utilities
+tldextract>=5.0.0
+
+# Async support
+asyncio-throttle>=1.0.2
+
+# Optional — Playwright (untuk --dom-xss-scan, --spa-crawl, --verify-headless, --test-new-events dengan verifikasi)
+# Setelah install, jalankan: playwright install chromium
+# playwright>=1.40.0
+
+# Optional — AI assist (untuk --ai-assist, butuh ANTHROPIC_API_KEY)
+# anthropic>=0.20.0
+
+# Dev / Testing (tidak perlu untuk production)
+# pytest>=7.4.0
+# pytest-asyncio>=0.23.0

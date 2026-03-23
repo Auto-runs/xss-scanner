@@ -1,0 +1,16 @@
+# targets.txt — Example target list for XScanner
+# One URL per line. Lines starting with # are ignored.
+# IMPORTANT: Only scan systems you own or have written authorization to test.
+
+# Local test environment
+http://localhost:8080/search?q=test
+http://localhost:8080/comment?body=hello
+http://localhost:8080/profile?name=user
+
+# Staging environment example (replace with your actual staging URL)
+# https://staging.yoursite.com/search?q=test
+# https://staging.yoursite.com/api/feedback
+
+# DVWA / WebGoat / bWAPP (intentionally vulnerable apps for training)
+# http://localhost/dvwa/vulnerabilities/xss_r/?name=test
+# http://localhost/WebGoat/start.mvc
