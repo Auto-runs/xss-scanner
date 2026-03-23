@@ -35,6 +35,10 @@ XScanner adalah framework Python untuk mendeteksi XSS (Cross-Site Scripting) yan
 - **HPP ASP.NET comma concat exploit** — bypass teknik 2025 yang bypass 14/17 enterprise WAF (Ethiack Research)
 - **Blind XSS server** dengan CORS headers — callback benar-benar sampai ke server
 - **5 format laporan** — JSON, HTML dashboard, CSV, Markdown (bug bounty ready), SARIF (CI/CD)
+- **Rich Blind XSS Server** (XSS Hunter-style) — probe JS yang capture screenshot, cookies, localStorage, sessionStorage, DOM lengkap, AWS/JWT/GitHub/Slack secret scanning, correlated injection ID, dashboard web, Markdown report otomatis
+- **KNOXSS-style engine** — 118 payload dari 12 konteks spesifik (HTML, attr DQ/SQ/quoteless, JS DQ/SQ/template literal, URL, CSS, XML, JSONP, path), Flash Mode polyglot, JS hoisting
+- **Advanced Filter Bypass (AFB)** — probe 20 karakter kritis satu per satu, tentukan konteks injection secara presisi, filter payload yang butuh karakter yang di-block
+- **HTML PoC Generator** — generate laporan PoC lengkap per finding (siap submit bug bounty) dengan bukti AFB, steps reproduksi, impact, remediation
 - **136/136 unit tests passing**
 
 ---
@@ -218,6 +222,41 @@ python xscanner.py \
 | `--dom-clobbering` | DOM clobbering: document.head, config.url |
 | `--ai-assist` | Saran payload dari AI (butuh `ANTHROPIC_API_KEY`) |
 | `--waf-chain-depth N` | Kedalaman chain: 2=pairs 3=triples 4=quads (default: 3) |
+
+### Rich Blind XSS (XSS Hunter-style)
+
+| Flag | Deskripsi |
+|------|-----------|
+| `--start-rich-blind-server` | Jalankan Rich Blind XSS server dengan dashboard web, screenshot, data exfil |
+| `--blind-server-port N` | Port server (default: 8765) |
+| `--blind-output-dir PATH` | Direktori simpan hits — screenshot JPG, DOM HTML, JSON per hit |
+| `--no-blind-screenshot` | Nonaktifkan screenshot html2canvas (lebih ringan) |
+
+**Fitur Rich Blind Server:**
+- 📸 Screenshot halaman via `html2canvas` saat payload jalan
+- 🍪 Capture cookies, localStorage, sessionStorage
+- 🔑 Secret scanning — AWS Access Key, JWT, Bearer token, GitHub token, Google API key, OpenAI key, Slack token
+- 📄 Full DOM HTML disimpan ke file
+- 🔗 Correlated injection — setiap payload punya unique ID, tahu persis injection mana yang fire
+- 📊 Dashboard web real-time di `http://host:port/`
+- 📝 Auto-generate Markdown report saat scan selesai
+- ↩️ CORS + OPTIONS preflight (callback benar-benar sampai)
+
+### KNOXSS-style Validation
+
+| Flag | Deskripsi |
+|------|-----------|
+| `--run-afb` | Advanced Filter Bypass — probe 20 karakter kritis, tentukan konteks secara presisi |
+| `--knoxss-validate` | Validasi setiap finding di browser Chromium nyata |
+| `--generate-poc` | Generate HTML PoC per finding (siap submit ke bug bounty platform) |
+| `--poc-output-dir PATH` | Direktori output PoC HTML (default: `./xss_pocs`) |
+
+**Tentang AFB (Advanced Filter Bypass):**
+
+AFB probe setiap karakter kritis (`<`, `>`, `"`, `'`, `` ` ``, `;`, `(`, `)`, `/`, `\`, `=`, `{`, `}`, newline, tab, null) ke target. Hasilnya dipakai untuk:
+1. Menentukan konteks injection yang tepat (html / attr_dq / attr_sq / js_dq / js_sq / dll)
+2. Memfilter payload yang butuh karakter yang di-block — tidak membuang request sia-sia
+3. Memilih teknik bypass yang presisi berdasarkan apa yang survived
 
 ### Teknik Terbaru 2025
 
@@ -418,6 +457,9 @@ xss-scanner/
 │   ├── dom_xss_scanner.py            # DOM XSS via Playwright JS instrumentation
 │   ├── interaction_simulator.py      # ★ BARU: Playwright user gesture simulator
 │   ├── upload_injector.py            # ★ BARU: File upload XSS (filename injection)
+│   ├── rich_blind_server.py          # ★ BARU: XSS Hunter-style server (screenshot+exfil)
+│   ├── knoxss_validator.py           # ★ BARU: AFB + browser validation + PoC generator
+│   ├── upload_injector.py            # ★ BARU: File upload XSS (filename injection)
 │   ├── filter_probe.py               # CharacterMatrix — probe 23 karakter
 │   ├── header_injector.py            # 14 header injection test
 │   ├── real_world.py                 # Scope/Auth/Checkpoint/SecondOrder/HPP
@@ -429,6 +471,10 @@ xss-scanner/
 │   ├── mxss_engine_v2.py             # mXSS 115.4M
 │   ├── blind_xss_v2.py               # Blind 1.09M
 │   ├── advanced_engines_v2.py        # JSON+PP+Unicode+Browser+Smuggling
+│   │                                 # ★ BARU: NewEventHandlerEngine2025
+│   │                                 # ★ BARU: ParserDifferentialEngine2025
+│   ├── knoxss_cases.py               # ★ BARU: 118 payload 12 konteks (KNOXSS-style)
+│   ├── blind_probe.py                # ★ BARU: Rich blind probe JS generator
 │   │                                 # ★ BARU: NewEventHandlerEngine2025
 │   │                                 # ★ BARU: ParserDifferentialEngine2025
 │   ├── csp_bypass_engine.py          # CSP+Template+DOMClob

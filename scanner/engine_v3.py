@@ -87,6 +87,10 @@ from scanner.ai_advisor import AIPayloadAdvisor
 from scanner.verifier import HeadlessVerifier
 from scanner.upload_injector import UploadInjector
 from scanner.interaction_simulator import InteractionSimulator, INTERACTION_TIMEOUT
+from scanner.knoxss_validator import KnoxssValidator
+from payloads.knoxss_cases import KnoxssCaseEngine
+from payloads.blind_probe import BlindProbeGenerator
+from scanner.rich_blind_server import RichBlindServer
 
 
 class ScanEngineV3:
@@ -460,6 +464,15 @@ class ScanEngineV3:
             hpf = await self.hpp_tester.test(target, baseline_body)
             async with self._lock:
                 self.findings.extend(hpf)
+
+        # ── AFB + KNOXSS case-based testing ────────────────────────────
+        afb = await self._run_afb(target)   # None jika --run-afb tidak aktif
+
+        if afb or self.config.knoxss_validate:
+            knoxss_findings = await self._test_knoxss_cases(target, baseline_body, afb)
+            if knoxss_findings:
+                async with self._lock:
+                    self.findings.extend(knoxss_findings)
 
         # File upload XSS test (POST endpoints)
         if target.method == 'POST' and 'multipart' not in str(target.headers.get('Content-Type','')):
@@ -837,6 +850,120 @@ class ScanEngineV3:
                 break
         return findings
 
+    # ═══ KNOXSS-style AFB + Case-based testing ═════════════════
+
+    async def _test_knoxss_cases(self, target, baseline_body: str, afb=None):
+        """
+        Test menggunakan KNOXSS-style case engine.
+        Jika AFB result tersedia, pilih payload berdasarkan karakter yang survived.
+        Jika tidak, gunakan semua case yang relevan untuk context terdeteksi.
+        """
+        findings = []
+        ctx = target.context or "html"
+
+        # Mapping dari Context enum ke knoxss context string
+        ctx_map = {
+            "html":          "html",
+            "attr":          "attr_dq",
+            "js":            "js_dq",
+            "url":           "url",
+            "css":           "css",
+            "script":        "js_dq",
+            "comment":       "html",
+            "json":          "js_dq",
+        }
+        knoxss_ctx = ctx_map.get(str(ctx).lower(), "html")
+
+        if afb:
+            payloads = self.knoxss_validator.get_payloads_for_afb(afb, top_n=25)
+        else:
+            payloads = self.knoxss_cases.generate(knoxss_ctx, top_n=25)
+
+        for payload, score, label in payloads:
+            if self._max_findings_reached():
+                break
+            t    = self._inject(target, payload)
+            resp = await self.http.request(t)
+            if not resp:
+                continue
+            self._stats["requests_sent"] += 1
+            result = self.detector.analyze(payload, resp.text, resp.status, dict(resp.headers))
+            if not result:
+                continue
+
+            idx      = resp.text.find(payload[:20]) if payload else -1
+            evidence = resp.text[max(0, idx-60):idx+80] if idx >= 0 else ""
+
+            f = Finding(
+                url=t.url, param=t.param_key, payload=payload,
+                context=Context.HTML, xss_type="reflected",
+                evidence=evidence[:300], severity="High",
+                confidence="High" if score >= 0.95 else "Medium",
+                encoding_used=label,
+            )
+
+            # Browser validation jika --knoxss-validate aktif
+            if self.config.knoxss_validate:
+                try:
+                    verified = await self.knoxss_validator.validate_in_browser(
+                        self._build_full_url(t), f
+                    )
+                    f.verified = verified
+                    if verified:
+                        f.confidence = "High"
+                except Exception as e:
+                    debug(f"[knoxss_validate] {e}")
+
+            # Generate PoC jika --generate-poc aktif
+            if self.config.generate_poc:
+                await self._save_poc(f)
+
+            async with self._lock:
+                self.findings.append(f)
+            findings.append(f)
+            if findings:
+                break  # Stop di finding pertama per target/param
+
+        return findings
+
+    async def _run_afb(self, target) -> "AFBResult | None":
+        """Jalankan Advanced Filter Bypass probe."""
+        if not self.config.run_afb:
+            return None
+        try:
+            afb = await self.knoxss_validator.run_afb(target)
+            if afb:
+                info(f"[AFB] {target.param_key}: survived={list(afb.survived.keys())[:6]}")
+            return afb
+        except Exception as e:
+            debug(f"[AFB] error: {e}")
+            return None
+
+    async def _save_poc(self, finding):
+        """Simpan HTML PoC untuk satu finding."""
+        import os
+        try:
+            poc_dir = self.config.poc_output_dir
+            os.makedirs(poc_dir, exist_ok=True)
+            import hashlib
+            fname = hashlib.md5(f"{finding.url}{finding.param}".encode()).hexdigest()[:8]
+            path  = os.path.join(poc_dir, f"poc_{fname}.html")
+            html  = self.knoxss_validator.generate_poc_html(finding)
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(html)
+            info(f"[PoC] Saved: {path}")
+        except Exception as e:
+            debug(f"[PoC] save error: {e}")
+
+    def _build_full_url(self, target) -> str:
+        """Build full URL dengan params untuk browser navigation."""
+        from urllib.parse import urlencode, urlparse, urlunparse, parse_qs
+        parsed  = urlparse(target.url)
+        params  = {**target.params}
+        query   = urlencode(params)
+        return urlunparse((parsed.scheme, parsed.netloc, parsed.path,
+                           parsed.params, query, ""))
+
     # ═══ WebSocket/SSE injection test 2025 ════════════════════
 
     async def _test_websocket(self, target, baseline_body: str):
@@ -977,4 +1104,20 @@ class ScanEngineV3:
              f"{len(self.findings)} findings")
 
     async def close(self):
+        if self._blind_server:
+            # Simpan Markdown report sebelum stop
+            try:
+                import os
+                md_path = os.path.join(
+                    self.config.blind_output_dir, "blind_xss_report.md"
+                )
+                os.makedirs(self.config.blind_output_dir, exist_ok=True)
+                with open(md_path, "w") as fh:
+                    fh.write(self._blind_server.generate_report_md())
+                info(f"Blind XSS report: {md_path}")
+            except Exception:
+                pass
+            await self._blind_server.stop()
+        if self.config.knoxss_validate or self.config.run_afb:
+            await self.knoxss_validator.stop()
         await self.http.close()

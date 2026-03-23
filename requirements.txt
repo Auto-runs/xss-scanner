@@ -1,26 +1,35 @@
 # XScanner v3 — Requirements
 # Install: pip install -r requirements.txt
 #
-# Core (wajib):
-aiohttp>=3.9.0
-beautifulsoup4>=4.12.0
-click>=8.1.0
-lxml>=4.9.0
-rich>=13.0.0
+# ─── Core (wajib) ────────────────────────────────────────────────────────────
+aiohttp>=3.9.0          # Async HTTP client
+beautifulsoup4>=4.12.0  # HTML parsing
+click>=8.1.0            # CLI framework
+lxml>=4.9.0             # Fast XML/HTML parser
+rich>=13.0.0            # Terminal output (color, tables)
+tldextract>=5.0.0       # Domain extraction untuk scope management
 
-# Security scanning utilities
-tldextract>=5.0.0
-
-# Async support
-asyncio-throttle>=1.0.2
-
-# Optional — Playwright (untuk --dom-xss-scan, --spa-crawl, --verify-headless, --test-new-events dengan verifikasi)
-# Setelah install, jalankan: playwright install chromium
+# ─── Optional: Playwright (headless browser) ─────────────────────────────────
+# Diperlukan untuk:
+#   --dom-xss-scan, --spa-crawl, --verify-headless
+#   --test-new-events (dengan verifikasi InteractionSimulator)
+#   --knoxss-validate, --run-afb
+#   --start-rich-blind-server (screenshot via html2canvas)
+#
+# Install:
+#   pip install playwright
+#   playwright install chromium
+#
 # playwright>=1.40.0
 
-# Optional — AI assist (untuk --ai-assist, butuh ANTHROPIC_API_KEY)
+# ─── Optional: AI Assist ─────────────────────────────────────────────────────
+# Diperlukan untuk --ai-assist
+# Butuh ANTHROPIC_API_KEY di environment
+#
 # anthropic>=0.20.0
 
-# Dev / Testing (tidak perlu untuk production)
+# ─── Dev / Testing ───────────────────────────────────────────────────────────
+# Tidak diperlukan untuk production use
+#
 # pytest>=7.4.0
 # pytest-asyncio>=0.23.0

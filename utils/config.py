@@ -104,6 +104,16 @@ class ScanConfig:
     test_headers:   bool       = False   # inject XSS into HTTP headers
     test_hpp:       bool       = False   # HTTP parameter pollution
     # ── Baru ────────────────────────────────────────────────────────────────
+    # ── Rich Blind XSS (XSS Hunter style) ──────────────────────────────────
+    start_rich_blind_server: bool    = False
+    blind_server_port:       int     = 8765
+    blind_output_dir:        str     = "./blind_xss_hits"
+    blind_screenshot:        bool    = True   # html2canvas screenshot
+    # ── KNOXSS-style validation ───────────────────────────────────────────────
+    run_afb:                 bool    = False  # Advanced Filter Bypass probe
+    generate_poc:            bool    = False  # Generate HTML PoC per finding
+    poc_output_dir:          str     = "./xss_pocs"
+    knoxss_validate:         bool    = False  # Validate dengan KnoxssValidator
     scan_timeout:     int      = 0        # detik, 0 = tidak ada batas
     max_findings:     int      = 0        # 0 = tidak ada batas
     show_progress:    bool     = True     # tampilkan progress bar

@@ -52,6 +52,14 @@ console = Console()
 @click.option("--test-new-events", is_flag=True,  help="[2025] Test XSS via event handler HTML5 baru (onbeforetoggle, onanimationcancel, dll)")
 @click.option("--test-parser-diff",is_flag=True,  help="[2025] Test parser differential bypass (Ethiack Research 2025, bypass 14/17 WAF)")
 @click.option("--test-hpp-2025",   is_flag=True,  help="[2025] HPP ASP.NET comma concat exploit (Ethiack Research 2025)")
+@click.option("--start-rich-blind-server", is_flag=True, help="Jalankan Rich Blind XSS server (XSS Hunter-style) dengan screenshot + data exfil")
+@click.option("--blind-server-port",     default=8765,  show_default=True, help="Port untuk blind XSS server")
+@click.option("--blind-output-dir",      default="./blind_xss_hits", show_default=True, help="Direktori simpan blind XSS hits (screenshot, DOM, JSON)")
+@click.option("--no-blind-screenshot",   is_flag=True,  help="Nonaktifkan screenshot html2canvas di probe")
+@click.option("--run-afb",               is_flag=True,  help="[KNOXSS] Advanced Filter Bypass — probe tiap karakter kritis")
+@click.option("--generate-poc",          is_flag=True,  help="[KNOXSS] Generate HTML PoC per finding (siap bug bounty submit)")
+@click.option("--poc-output-dir",        default="./xss_pocs", show_default=True, help="Direktori output HTML PoC")
+@click.option("--knoxss-validate",       is_flag=True,  help="[KNOXSS] Validasi setiap finding di browser nyata")
 @click.option("--scan-timeout",    default=0,     show_default=True, help="Batas waktu total scan dalam detik (0 = tidak ada batas)")
 @click.option("--max-findings",    default=0,     show_default=True, help="Berhenti setelah N finding (0 = tidak ada batas)")
 @click.option("--payload-file",    default=None,  type=click.Path(exists=True), help="File berisi custom XSS payloads (satu per baris)")
@@ -98,6 +106,8 @@ def main(
     scope, exclude_scope, exclude_path,
     test_headers, test_hpp, test_json, second_order, js_crawl,
     test_new_events, test_parser_diff, test_hpp_2025,
+    start_rich_blind_server, blind_server_port, blind_output_dir,
+    no_blind_screenshot, run_afb, generate_poc, poc_output_dir, knoxss_validate,
     scan_timeout, max_findings, payload_file, no_progress,
     blind_callback, start_blind_server, verify_headless,
     output, report_html, report_csv, report_md, report_sarif,
@@ -186,6 +196,14 @@ def main(
         test_new_events = test_new_events,
         test_parser_diff= test_parser_diff,
         test_hpp_2025   = test_hpp_2025,
+        start_rich_blind_server = start_rich_blind_server,
+        blind_server_port       = blind_server_port,
+        blind_output_dir        = blind_output_dir,
+        blind_screenshot        = not no_blind_screenshot,
+        run_afb                 = run_afb,
+        generate_poc            = generate_poc,
+        poc_output_dir          = poc_output_dir,
+        knoxss_validate         = knoxss_validate,
         scan_timeout    = scan_timeout,
         max_findings    = max_findings,
         payload_file    = payload_file,
